@@ -1,5 +1,7 @@
+import "package:brownonion/api/api_service.dart";
 import "package:brownonion/consts/app_assets.dart";
 import "package:brownonion/consts/app_colors.dart";
+import "package:brownonion/models/model.dart";
 import "package:brownonion/pages/add_complaint.dart";
 import "package:flutter/cupertino.dart";
 import "package:flutter/material.dart";
@@ -42,70 +44,95 @@ class _HomepageState extends State<Homepage> {
     'Other',
   ];
 
-  List<Map<String, dynamic>> complaints = [];
+  // List<Map<String, dynamic>> complaints = [];
 
-  Future<void> addComplaint(
-      String payment, String details, XFile? image) async {
-    var request = http.MultipartRequest(
-        'POST',
-        Uri.parse(
-            'https://brownonions-002-site2.ftempurl.com/api/Complaint/AddComplaint'));
+  // Future<void> addComplaint(
+  //     String payment, String details, XFile? image) async {
+  //   var request = http.MultipartRequest(
+  //       'POST',
+  //       Uri.parse(
+  //           'https://brownonions-002-site2.ftempurl.com/api/Complaint/AddComplaint'));
 
-    // Add text fields
-    request.fields['complaintDescription'] = details;
-    request.fields['payment'] = payment;
+  //   // Add text fields
+  //   request.fields['complaintDescription'] = details;
+  //   request.fields['payment'] = payment;
 
-    // Add image if present
-    if (image != null) {
-      var stream = http.ByteStream(image.openRead());
-      var length = await image.length();
-      var multipartFile =
-          http.MultipartFile('file', stream, length, filename: image.name);
-      request.files.add(multipartFile);
-    }
+  //   // Add image if present
+  //   if (image != null) {
+  //     var stream = http.ByteStream(image.openRead());
+  //     var length = await image.length();
+  //     var multipartFile =
+  //         http.MultipartFile('file', stream, length, filename: image.name);
+  //     request.files.add(multipartFile);
+  //   }
 
-    var response = await request.send();
-    final respStr = await response.stream.bytesToString();
-    final jsonResponse = json.decode(respStr);
+  //   var response = await request.send();
+  //   final respStr = await response.stream.bytesToString();
+  //   final jsonResponse = json.decode(respStr);
 
-    if (response.statusCode == 200 && jsonResponse['apiStatusCode'] == 200) {
-      print('Complaint added successfully!');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Complaint added successfully: ${jsonResponse['notifyMessage']}')),
-      );
+  //   if (response.statusCode == 200 && jsonResponse['apiStatusCode'] == 200) {
+  //     print('Complaint added successfully!');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //           content: Text(
+  //               'Complaint added successfully: ${jsonResponse['notifyMessage']}')),
+  //     );
+  //   } else {
+  //     print('Failed to add complaint');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error: ${jsonResponse['message']}')),
+  //     );
+  //   }
+  // }
+
+  late List<UserModel>? _userModel = [];
+
+  void _addComplaint() async {
+    UserModel newComplaint = UserModel(
+      complaintId: 0,
+      complaintNo: 'C123',
+      complaintFrom: 'User',
+      complaintTypeId: 1,
+      complaintDescription: 'Complaint description here',
+      statusId: 1,
+      chefId: 3,
+      userId: 1,
+      createdDate: DateTime.now(),
+      comments: 'No comments',
+      modifiedDate: DateTime.now(),
+      images: [],
+      status: 'Pending',
+      restaurantName: 'Restaurant',
+      customerName: 'Customer',
+      complaintType: 'Type',
+      createdDateString: DateTime.now().toIso8601String(),
+    );
+
+    bool success = await ApiService().addComplaint(newComplaint);
+    if (success) {
+      print("Complaint added successfully!");
     } else {
-      print('Failed to add complaint');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${jsonResponse['message']}')),
-      );
+      print("Failed to add complaint.");
     }
   }
 
   @override
   void initState() {
     super.initState();
-    fetchComplaints();
+    //fetchComplaints();
+    _getData();
   }
 
-  Future<void> fetchComplaints() async {
-    try {
-      final response = await http.get(Uri.parse(
-          'https://brownonions-002-site2.ftempurl.com/api/Complaint/GetComplaints?ComplaintId=-1&ChefId=3&UserId=-1&StatusId=-1&ComplaintTypeId=-1&FromComplaint=chef'));
-
-      if (response.statusCode == 200) {
-        List<dynamic> jsonResponse = json.decode(response.body);
-        setState(() {
-          complaints = jsonResponse.cast<Map<String, dynamic>>();
-        });
-      } else {
-        // Handle the error response
-        print('Failed to load complaints: ${response.statusCode}');
-      }
-    } catch (e) {
-      // Handle any errors like network issues
-      print('Error: $e');
+  void _getData() async {
+    final users = (await ApiService().getUsers())!;
+    if (users != null) {
+      setState(() {
+        _userModel = users;
+      });
+    } else {
+      setState(() {
+        _userModel = [];
+      });
     }
   }
 
@@ -168,21 +195,6 @@ class _HomepageState extends State<Homepage> {
                           ),
                         ],
                       ),
-                      // GestureDetector(
-                      //   onTap: () {
-                      //     // Navigator.of(context).push(MaterialPageRoute(
-                      //     //     builder: (context) => const AddComplaint()));
-
-                      //   },
-                      //   child: const CircleAvatar(
-                      //     backgroundColor: AppColors.white,
-                      //     child: Icon(
-                      //       Icons.add,
-                      //       color: AppColors.pink,
-                      //     ),
-                      //   ),
-                      // ),
-
                       ElevatedButton(
                           onPressed: () {
                             showDialog(
@@ -395,10 +407,8 @@ class _HomepageState extends State<Homepage> {
                                                           if (_formKey
                                                               .currentState!
                                                               .validate()) {
-                                                            addComplaint(
-                                                                _selectedCategory!,
-                                                                _details!,
-                                                                image); // API call here
+                                                            _addComplaint();
+
                                                             ScaffoldMessenger
                                                                     .of(context)
                                                                 .showSnackBar(
@@ -525,15 +535,15 @@ class _HomepageState extends State<Homepage> {
                 ],
               ),
             ),
-            complaints.isEmpty
-                ? Center(
+            (_userModel == null || _userModel!.isEmpty)
+                ? const Center(
                     child: CircularProgressIndicator(),
                   )
                 : ListView.builder(
                     shrinkWrap: true,
-                    itemCount: complaints.length, //items.length,
+                    itemCount: _userModel!.length, //items.length,
                     itemBuilder: (context, index) {
-                      var complaint = complaints[index];
+                      var complaint = _userModel![index];
                       return Card(
                         color: AppColors.white,
                         margin: const EdgeInsets.symmetric(
@@ -563,9 +573,11 @@ class _HomepageState extends State<Homepage> {
                                       const SizedBox(
                                         height: 5,
                                       ),
-                                      const Text(
-                                        '#000384309283',
-                                        style: TextStyle(
+                                      Text(
+                                        _userModel![index]
+                                            .complaintId
+                                            .toString(), //'#000384309283',
+                                        style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14),
                                       )
@@ -596,23 +608,25 @@ class _HomepageState extends State<Homepage> {
                               const SizedBox(
                                 height: 20,
                               ),
-                              const Row(
+                              Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.person_3_outlined,
                                         color: AppColors.pink,
                                         size: 15,
                                       ),
-                                      SizedBox(
+                                      const SizedBox(
                                         width: 5,
                                       ),
                                       Text(
-                                        'Talha Ahmed',
-                                        style: TextStyle(
+                                        _userModel![index]
+                                            .complaintFrom
+                                            .toString(),
+                                        style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w400),
                                       ),
@@ -659,8 +673,8 @@ class _HomepageState extends State<Homepage> {
                                 height: 11,
                               ),
                               Text(
-                                complaint['description'] ?? '',
-                                //'Lorem ipsum is placeholder text commonly used in the graphic, print, and publishing industries for previewing layouts and visual mockups...',
+                                //_userModel!['description'] ?? '',
+                                'Lorem ipsum is placeholder text commonly used in the graphic, print, and publishing industries for previewing layouts and visual mockups...',
                                 style: const TextStyle(
                                     fontSize: 10, fontWeight: FontWeight.w300),
                               )
